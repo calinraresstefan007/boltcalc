@@ -44,4 +44,6 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: BoltCalc-apk
-          path: app/build/outputs/apk/debug/*.apk
+          path: |
+            app/build/outputs/apk/**/debug/*.apk
+            app/build/outputs/**/*.apk
