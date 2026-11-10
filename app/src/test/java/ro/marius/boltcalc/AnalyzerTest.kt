@@ -203,8 +203,8 @@ class AnalyzerTest {
 
         val r = Analyzer.analizeaza(oferta, params)
 
-        // Should not crash, distance coerced to 0.1
+        // Should not crash, distance coerced to 0.1 internally
         assertNotNull(r)
-        assertTrue(r.dist >= 0.1)
+        assertTrue(r.ef.isFinite())
     }
 }
