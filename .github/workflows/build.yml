@@ -35,7 +35,10 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Fix gradlew line endings
-        run: sed -i 's/\r$//' ./gradlew
+        run: |
+          sed -i 's/\r$//' ./gradlew
+          echo "--- gradlew first 5 lines (hex) ---"
+          head -5 ./gradlew | xxd | head -20
 
       - name: Run unit tests
         run: ./gradlew testDebugUnitTest
