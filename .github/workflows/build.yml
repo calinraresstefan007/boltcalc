@@ -35,16 +35,13 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Fix gradlew line endings
-        run: |
-          sed -i 's/\r$//' ./gradlew
-          echo "--- gradlew first 5 lines (hex) ---"
-          head -5 ./gradlew | xxd | head -20
+        run: sed -i 's/\r$//' ./gradlew
 
       - name: Run unit tests
-        run: ./gradlew testDebugUnitTest
+        run: java -jar gradle/wrapper/gradle-wrapper.jar testDebugUnitTest
 
       - name: Build APK
-        run: ./gradlew assembleDebug
+        run: java -jar gradle/wrapper/gradle-wrapper.jar assembleDebug
 
       - name: Find APK files
         run: find . -name "*.apk" -type f 2>/dev/null
