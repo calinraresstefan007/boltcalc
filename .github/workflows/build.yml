@@ -11,10 +11,11 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Configure git to not convert line endings
+        run: git config --global core.autocrlf false
+
       - name: Checkout repository
         uses: actions/checkout@v5
-        with:
-          core.autocrlf: false
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
