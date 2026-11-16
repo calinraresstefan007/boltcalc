@@ -45,3 +45,33 @@ jobs:
             app/build/outputs/apk/**/debug/*.apk
             app/build/outputs/**/*.apk
           retention-days: 30
+
+  release:
+    needs: build
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download APK artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: BoltCalc-apk
+          path: ./apk
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: v${{ github.run_number }}
+          name: Bolt Calc v${{ github.run_number }}
+          body: |
+            Auto-generated release from GitHub Actions run #${{ github.run_number }}
+
+            **Changes:** ${{ github.event.head_commit.message }}
+
+            **APK:** `boltcalc-debug.apk`
+          files: ./apk/*.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
