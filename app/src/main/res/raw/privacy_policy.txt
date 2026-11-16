@@ -1,0 +1,54 @@
+Bolt Calc Privacy Policy
+========================
+
+Last updated: 2026-11-16
+
+This app ("Bolt Calc") helps Bolt drivers evaluate ride offers by calculating profitability based on fuel costs, commission, and bonuses.
+
+DATA COLLECTION AND USE
+-----------------------
+
+This app DOES NOT collect, transmit, or share any personal data with external servers. All data processing happens locally on your device.
+
+What data is processed locally:
+- Bolt ride offer text (read from screen via Accessibility Service)
+- Your configured settings (fuel consumption, fuel price, commission rate, etc.)
+- Bonus campaign data (targets, progress, amounts)
+- Last read offer text (for calibration/debugging)
+
+All data is stored in Android SharedPreferences on your device only. No analytics, no crash reporting, no third-party services.
+
+PERMISSIONS
+-----------
+
+1. Accessibility Service (android.permission.BIND_ACCESSIBILITY_SERVICE)
+   - Purpose: Read ride offer text from the Bolt Driver app screen
+   - Scope: Limited to package "ee.mtakso.driver" (Bolt Driver app only)
+   - Data accessed: Text content of ride offer screens (price, distance, time)
+   - Data NOT accessed: Personal messages, contacts, location, other apps
+
+2. Display Over Other Apps (android.permission.SYSTEM_ALERT_WINDOW)
+   - Purpose: Show profitability overlay on top of Bolt Driver app
+   - Data displayed: Calculated profit, earnings per km, verdict (Excellent/Good/Reject)
+
+DATA RETENTION
+--------------
+
+- Settings: Persisted until you change or uninstall the app
+- Calibration text: Last read offer text, overwritten on each new offer
+- Bonus progress: Persisted until you change or uninstall the app
+
+YOUR RIGHTS
+-----------
+
+- You can disable the Accessibility Service anytime in Settings → Accessibility
+- You can revoke "Display over other apps" permission in Settings → Apps → Bolt Calc
+- You can clear all data by uninstalling the app
+- No data is sent to any server, so there's nothing to delete from our side
+
+CONTACT
+-------
+
+For questions about this policy, contact the developer through GitHub.
+
+This app is open source. Source code available at: https://github.com/calinraresstefan007/boltcalc
