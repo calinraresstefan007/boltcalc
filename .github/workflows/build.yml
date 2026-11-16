@@ -29,10 +29,10 @@ jobs:
           accept-android-sdk-licenses: true
 
       - name: Run unit tests
-        run: java -cp gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain testDebugUnitTest
+        run: ./gradlew testDebugUnitTest
 
       - name: Build APK
-        run: java -cp gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain assembleDebug
+        run: ./gradlew assembleDebug
 
       - name: Find APK files
         run: find . -name "*.apk" -type f 2>/dev/null
@@ -44,3 +44,4 @@ jobs:
           path: |
             app/build/outputs/apk/**/debug/*.apk
             app/build/outputs/**/*.apk
+          retention-days: 30
