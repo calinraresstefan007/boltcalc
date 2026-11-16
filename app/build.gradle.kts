@@ -30,6 +30,6 @@ android {
 
 dependencies {
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:1.9.24")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:2.4.21")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.10.0")
 }
