@@ -1,4 +1,4 @@
-name: Build APK
+﻿name: Build APK
 
 on:
   push:
@@ -31,19 +31,23 @@ jobs:
       - name: Run unit tests
         run: java -cp gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain testDebugUnitTest
 
-      - name: Build APK
-        run: java -cp gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain assembleDebug
+      - name: Generate keystore
+        run: |
+          keytool -genkeypair -alias release -keyalg RSA -keysize 2048 -validity 10000 \
+            -keystore release.keystore -storepass android -keypass android \
+            -dname "CN=BoltCalc, OU=BoltCalc, O=BoltCalc, L=City, ST=State, C=US"
 
-      - name: Find APK files
-        run: find . -name "*.apk" -type f 2>/dev/null
+      - name: Build release APK
+        run: java -cp gradle/wrapper/gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain assembleRelease
+        env:
+          KEYSTORE_PASSWORD: android
+          KEY_PASSWORD: android
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v5
         with:
           name: BoltCalc-apk
-          path: |
-            app/build/outputs/apk/**/debug/*.apk
-            app/build/outputs/**/*.apk
+          path: app/build/outputs/apk/release/*.apk
           retention-days: 30
 
   release:
@@ -59,9 +63,6 @@ jobs:
           name: BoltCalc-apk
           path: ./apk
 
-      - name: List downloaded files
-        run: find ./apk -type f -name "*.apk"
-
       - name: Create Release
         uses: softprops/action-gh-release@v3
         with:
@@ -72,7 +73,7 @@ jobs:
 
             **Changes:** ${{ github.event.head_commit.message }}
 
-            **APK:** `boltcalc-debug.apk`
+            **APK:** `app-release.apk`
           files: ./apk/**/*.apk
           draft: false
           prerelease: false
