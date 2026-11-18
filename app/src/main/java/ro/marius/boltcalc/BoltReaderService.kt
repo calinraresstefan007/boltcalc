@@ -25,6 +25,7 @@ class BoltReaderService : AccessibilityService() {
     private var tvPrice: TextView? = null
     private var tvSub: TextView? = null
     private var tvWhy: TextView? = null
+    private var tvWarn: TextView? = null
     private var tvOra: TextView? = null
     private var tvCost: TextView? = null
     private var tvProfit: TextView? = null
@@ -141,6 +142,12 @@ class BoltReaderService : AccessibilityService() {
         }
         root.addView(why, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) })
 
+        val warn = txt(13f, true, Color.BLACK).apply {
+            setPadding(dp(12), dp(7), dp(12), dp(7))
+            background = GradientDrawable().apply { setColor(Color.parseColor("#F1C40F")); cornerRadius = dp(10).toFloat() }
+        }
+        root.addView(warn, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
+
         val ora = txt(17f, true); val cost = txt(17f, true); val profit = txt(17f, true)
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         val lp = { LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply { marginEnd = dp(6) } }
@@ -149,7 +156,7 @@ class BoltReaderService : AccessibilityService() {
         row.addView(tile("PROFIT", profit), LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
         root.addView(row, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) })
 
-        gauge = g; tvTitle = title; tvPrice = price; tvSub = sub; tvWhy = why
+        gauge = g; tvTitle = title; tvPrice = price; tvSub = sub; tvWhy = why; tvWarn = warn
         tvOra = ora; tvCost = cost; tvProfit = profit
         return root
     }
@@ -186,6 +193,8 @@ class BoltReaderService : AccessibilityService() {
         tvSub?.text = "%.1f km total$minTxt".format(r.dist)
         tvWhy?.text = r.motive
         tvWhy?.visibility = if (r.motive.isEmpty()) View.GONE else View.VISIBLE
+        tvWarn?.text = r.avert
+        tvWarn?.visibility = if (r.avert.isEmpty()) View.GONE else View.VISIBLE
         tvOra?.text = r.ora?.let { "%.0f".format(it) } ?: "–"
         tvCost?.text = "%.1f".format(r.cost)
         tvProfit?.text = "%.1f".format(r.profit)
@@ -198,7 +207,7 @@ class BoltReaderService : AccessibilityService() {
             try { (getSystemService(WINDOW_SERVICE) as WindowManager).removeView(it) } catch (_: Exception) {}
         }
         box = null; gauge = null; tvTitle = null; tvPrice = null; tvSub = null
-        tvWhy = null; tvOra = null; tvCost = null; tvProfit = null
+        tvWhy = null; tvWarn = null; tvOra = null; tvCost = null; tvProfit = null
     }
 
     override fun onInterrupt() { hideOverlay() }

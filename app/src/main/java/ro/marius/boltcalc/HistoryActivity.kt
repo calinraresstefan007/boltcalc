@@ -70,23 +70,10 @@ class HistoryActivity : Activity() {
 
     private fun blocheaza(adr: String) {
         val propus = adr.substringBefore(',').trim()
-        val e = EditText(this).apply { setText(propus) }
-        AlertDialog.Builder(this)
-            .setTitle("Adaugă la adrese evitate")
-            .setMessage("Poți scurta textul, de exemplu doar numele străzii, ca să blocheze toată strada.")
-            .setView(e)
-            .setPositiveButton("Adaugă") { _, _ -> adaugaEvitat(e.text.toString()) }
-            .setNegativeButton("Anulează", null)
-            .show()
-    }
-
-    private fun adaugaEvitat(t: String) {
-        val term = t.trim()
-        if (term.length < 3) { Toast.makeText(this, "Prea scurt", Toast.LENGTH_SHORT).show(); return }
-        val cur = Params.raw(this, "avoid")
-        val exista = cur.lines().any { Analyzer.norm(it) == Analyzer.norm(term) }
-        if (!exista) Params.prefs(this).edit().putString("avoid", (cur.trimEnd() + "\n" + term).trim()).apply()
-        Toast.makeText(this, if (exista) "Era deja în listă" else "Adăugat la adrese evitate", Toast.LENGTH_SHORT).show()
+        BlocDialog.arata(this, null, propus, {
+            Blocate.salveaza(this, it)
+            Toast.makeText(this, "Adăugat la adrese evitate", Toast.LENGTH_SHORT).show()
+        }, null)
     }
 
     private fun verdictColor(v: String) = when (v) {

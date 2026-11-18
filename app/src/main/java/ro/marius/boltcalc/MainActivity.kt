@@ -10,12 +10,14 @@ import android.provider.Settings
 import android.text.InputType
 import android.view.ViewGroup
 import android.widget.*
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class MainActivity : Activity() {
 
     private val fields = LinkedHashMap<String, EditText>()
     private lateinit var net: CheckBox
-    private lateinit var avoid: EditText
     private lateinit var out: TextView
 
     private val BG = Color.parseColor("#0B100E")
@@ -105,15 +107,7 @@ class MainActivity : Activity() {
         field("minPret", "Preț minim (lei)", "oprit")
         field("maxPret", "Preț maxim (lei), refuză peste", "oprit")
         field("minRating", "Rating minim client", "oprit")
-        label("Străzi / adrese de evitat, câte una pe rând")
-        avoid = EditText(ctx).apply {
-            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_MULTI_LINE
-            minLines = 3
-            gravity = android.view.Gravity.TOP
-            setText(Params.raw(ctx, "avoid"))
-        }
-        styleEdit(avoid)
-        card.addView(avoid)
+        button("Adrese evitate: motive și perioadă") { startActivity(Intent(ctx, BlocateActivity::class.java)) }
 
         section("Salvare și test")
         button("Salvează", true) { save(); Toast.makeText(ctx, "Salvat", Toast.LENGTH_SHORT).show() }
@@ -122,13 +116,51 @@ class MainActivity : Activity() {
         out = TextView(ctx).apply { textSize = 13f; setTextColor(MUTED); setPadding(0, dp(10), 0, 0) }
         card.addView(out)
 
+        section("Copie de siguranță")
+        button("Salvează copie (Drive sau alt loc)") {
+            val i = Intent(Intent.ACTION_CREATE_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "application/json"
+                putExtra(Intent.EXTRA_TITLE, "boltcalc-copie-" + SimpleDateFormat("yyyyMMdd", Locale.US).format(Date()) + ".json")
+            }
+            startActivityForResult(i, 1001)
+        }
+        button("Restaurează dintr-o copie") {
+            val i = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "*/*"
+            }
+            startActivityForResult(i, 1002)
+        }
+
         setContentView(ScrollView(ctx).apply { setBackgroundColor(BG); addView(page) })
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (resultCode != RESULT_OK) return
+        val uri = data?.data ?: return
+        try {
+            if (requestCode == 1001) {
+                contentResolver.openOutputStream(uri)?.use { it.write(Backup.export(this).toByteArray(Charsets.UTF_8)) }
+                Toast.makeText(this, "Copie salvată", Toast.LENGTH_SHORT).show()
+            } else if (requestCode == 1002) {
+                val txt = contentResolver.openInputStream(uri)?.use { it.readBytes().toString(Charsets.UTF_8) } ?: ""
+                if (Backup.import(this, txt)) {
+                    Toast.makeText(this, "Restaurat", Toast.LENGTH_SHORT).show()
+                    recreate()
+                } else {
+                    Toast.makeText(this, "Fișier invalid", Toast.LENGTH_LONG).show()
+                }
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Eroare: " + e.message, Toast.LENGTH_LONG).show()
+        }
     }
 
     private fun save() {
         val e = Params.prefs(this).edit()
         fields.forEach { (k, v) -> e.putString(k, v.text.toString().trim()) }
-        e.putString("avoid", avoid.text.toString())
         e.putBoolean("net", net.isChecked)
         e.apply()
     }

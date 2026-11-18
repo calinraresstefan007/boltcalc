@@ -81,5 +81,9 @@ object Istoric {
         if (e.status == VAZUT) { e.status = EXPIRAT; save(c, l) }
     }
 
+    fun rawJson(c: Context): String = prefs(c).getString("items", "[]") ?: "[]"
+
+    fun inlocuieste(c: Context, json: String) { prefs(c).edit().putString("items", json).apply() }
+
     fun sterge(c: Context) { prefs(c).edit().remove("items").apply() }
 }

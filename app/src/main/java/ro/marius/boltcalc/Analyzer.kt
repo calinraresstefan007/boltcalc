@@ -14,7 +14,7 @@ data class Params(
     val minPret: Double?,
     val maxPret: Double?,
     val minRating: Double?,
-    val avoid: List<String>
+    val blocate: List<Blocat>
 ) {
     companion object {
         private val DEFAULTS = mapOf(
@@ -41,7 +41,7 @@ data class Params(
                 num(r("minPret")),
                 num(r("maxPret")),
                 num(r("minRating")),
-                r("avoid").lines().map { it.trim() }.filter { it.length >= 3 }
+                Blocate.active(c)
             )
         }
     }
@@ -72,7 +72,8 @@ data class Rezultat(
     val dist: Double,
     val net: Double,
     val minute: Int,
-    val gaugeMax: Double
+    val gaugeMax: Double,
+    val avert: String
 )
 
 object Analyzer {
@@ -86,7 +87,9 @@ object Analyzer {
         val minute = (o.preluareMin ?: 0) + (o.cursaMin ?: 0)
 
         val why = ArrayList<String>()
-        avoidHit(o.text, p.avoid)?.let { why.add("Adresă evitată: $it") }
+        val hits = potriviri(o.text, p.blocate)
+        hits.filter { it.refuza }.take(2).forEach { why.add("Evitată: " + it.descriere()) }
+        val avert = hits.filter { !it.refuza }.take(2).joinToString("  •  ") { "Atenție: " + it.descriere() }
         val rating = o.rating
         if (p.minRating != null && rating != null && rating < p.minRating) why.add("Rating $rating sub ${p.minRating}")
         if (p.minPret != null && o.pret < p.minPret) why.add("Preț sub ${p.minPret} lei")
@@ -107,7 +110,7 @@ object Analyzer {
             Verdict.REFUZA -> "REFUZĂ"
         }
         val ora = if (minute > 0) profit / (minute / 60.0) else null
-        return Rezultat(verdict, titlu, why.joinToString("  •  "), ef, profit, cost, ora, dist, net, minute, p.minExcelent * 1.4)
+        return Rezultat(verdict, titlu, why.joinToString("  •  "), ef, profit, cost, ora, dist, net, minute, p.minExcelent * 1.4, avert)
     }
 
     fun norm(s: String): String =
@@ -117,9 +120,10 @@ object Analyzer {
             .replace(Regex("[^a-z0-9]+"), " ")
             .trim()
 
-    private fun avoidHit(text: String, avoid: List<String>): String? {
-        val hay = norm(text)
-        return avoid.firstOrNull { val t = norm(it); t.length >= 3 && hay.contains(t) }
+    // Potrivire pe cuvinte întregi: "Strada Deleni 7" nu prinde "Strada Deleni 70".
+    private fun potriviri(text: String, lista: List<Blocat>): List<Blocat> {
+        val hay = " " + norm(text) + " "
+        return lista.filter { val t = norm(it.text); t.length >= 3 && hay.contains(" $t ") }
     }
 
     // Ecran Bolt (RO): "40,84 lei (NET, taxe incluse)", "+19,64 lei inclus", "5 min • 1.6 km", "Ioana • 5.0 ★"
