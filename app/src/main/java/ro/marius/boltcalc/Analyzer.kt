@@ -122,8 +122,8 @@ object Analyzer {
 
     // Potrivire pe cuvinte întregi: "Strada Deleni 7" nu prinde "Strada Deleni 70".
     private fun potriviri(text: String, lista: List<Blocat>): List<Blocat> {
-        val hay = " " + norm(text) + " "
-        return lista.filter { val t = norm(it.text); t.length >= 3 && hay.contains(" $t ") }
+        val hay = " " + Adresa.norm(text) + " "
+        return lista.filter { val t = Adresa.norm(it.text); t.length >= 3 && hay.contains(" $t ") }
     }
 
     // Ecran Bolt (RO): "40,84 lei (NET, taxe incluse)", "+19,64 lei inclus", "5 min • 1.6 km", "Ioana • 5.0 ★"

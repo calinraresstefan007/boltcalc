@@ -35,7 +35,7 @@ class BlocateActivity : Activity() {
             text = "Adrese evitate"; textSize = 26f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.WHITE)
         })
         page.addView(TextView(this).apply {
-            text = "O adresă fără număr blochează toată strada. Cu număr, blochează doar acel număr."
+            text = "Fără număr blochezi toată strada, cu număr doar acel număr. Tipul contează: Strada Deleni și Aleea Deleni sunt străzi diferite. Alege „Oricare tip” ca să le blochezi pe amândouă."
             textSize = 12f; setTextColor(MUTED); setPadding(0, dp(4), 0, dp(10))
         })
         page.addView(Button(this).apply {

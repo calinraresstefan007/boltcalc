@@ -29,9 +29,18 @@ object BlocDialog {
         val col = LinearLayout(a).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(8), dp(20), dp(8)) }
         fun label(t: String) = col.addView(TextView(a).apply { text = t; textSize = 13f; setPadding(0, dp(12), 0, dp(2)) })
 
-        label("Stradă sau adresă (cu sau fără număr)")
-        val adr = EditText(a).apply { setText(init?.text ?: textInitial) }
-        col.addView(adr)
+        val (tip0, nume0, nr0) = Adresa.imparte(init?.text ?: textInitial)
+        label("Tipul străzii")
+        val spTip = Spinner(a)
+        spTip.adapter = ArrayAdapter(a, android.R.layout.simple_spinner_dropdown_item, Adresa.TIPURI.map { it.second })
+        spTip.setSelection(Adresa.TIPURI.indexOfFirst { it.first == tip0 }.coerceAtLeast(0))
+        col.addView(spTip)
+        label("Numele străzii")
+        val nume = EditText(a).apply { setText(nume0); hint = "ex: Deleni" }
+        col.addView(nume)
+        label("Număr (opțional, gol = toată strada)")
+        val nr = EditText(a).apply { setText(nr0); hint = "ex: 7" }
+        col.addView(nr)
 
         label("Motive (poți bifa mai multe)")
         val checks = LinkedHashMap<String, CheckBox>()
@@ -100,10 +109,10 @@ object BlocDialog {
         dlg.show()
 
         dlg.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-            val t = adr.text.toString().trim()
+            val t = Adresa.compune(Adresa.TIPURI[spTip.selectedItemPosition].first, nume.text.toString(), nr.text.toString())
             val motive = checks.filter { it.value.isChecked }.keys.toList()
             when {
-                t.length < 3 -> Toast.makeText(a, "Adresa e prea scurtă", Toast.LENGTH_SHORT).show()
+                nume.text.toString().trim().length < 2 -> Toast.makeText(a, "Scrie numele străzii", Toast.LENGTH_SHORT).show()
                 motive.isEmpty() -> Toast.makeText(a, "Bifează cel puțin un motiv", Toast.LENGTH_SHORT).show()
                 else -> {
                     val zile = perIds[rgPer.checkedRadioButtonId] ?: 30
