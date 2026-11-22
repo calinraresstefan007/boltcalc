@@ -43,8 +43,23 @@ class BoltReaderService : AccessibilityService() {
 
     private fun keyOf(o: Oferta) = "${o.pret}|${o.preluareKm}|${o.cursaKm}|${o.preluareMin}|${o.cursaMin}"
 
+    // Acceptare automată activă? Se deduce din ce vedem: eticheta "Acceptare automată" o pornește, un buton "Acceptă" manual o oprește.
+    private var modAuto = false
+    private val inchidere = Runnable { endOffer(); lockKey = null }
+
+    /** Cardul dispare doar după o pauză de 2,5 s fără ofertă citită (o citire ratată nu mai închide oferta). */
+    private fun programeazaInchidere() {
+        handler.removeCallbacks(inchidere)
+        if (curId != null) handler.postDelayed(inchidere, 2500) else lockKey = null
+    }
+
     private fun endOffer() {
-        curId?.let { Istoric.inchide(this, it) }
+        val id = curId
+        if (id != null) {
+            // Oferta a dispărut fără click pe Refuză: dacă acceptarea automată e activă, cursa a fost acceptată.
+            if (modAuto) { if (Istoric.marcheazaAuto(this, id)) Traseu.start(this, id) }
+            else Istoric.inchide(this, id)
+        }
         curId = null
         curKey = null
         autoKey = null
@@ -80,68 +95,119 @@ class BoltReaderService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.packageName?.toString() != boltPackage) return
+        if (!pornit()) return
         if (event.eventType == AccessibilityEvent.TYPE_VIEW_CLICKED) { handleClick(event); return }
         if (event.eventType == AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED) {
             val nt = event.text?.joinToString(" ") ?: ""
             if (nt.isNotBlank()) {
                 val hmN = SimpleDateFormat("HH:mm:ss", Locale("ro")).format(Date())
                 Params.prefs(this).edit().putString("notif", hmN + " " + nt).apply()
-                if (Analyzer.norm(nt).contains("anulat")) anuleaza()
+                if (Analyzer.norm(nt).let { it.contains("anulat") || it.contains("cancelled") || it.contains("canceled") }) anuleaza()
             }
             return
         }
         val now = System.currentTimeMillis()
-        if (now - lastRun < 150) return
+        if (now - lastRun < 250) {
+            // Nu pierdem evenimentul: recitim puțin mai târziu (cardul ofertei se poate completa după primul eveniment).
+            if (!trailPending) { trailPending = true; handler.postDelayed(trail, 300) }
+            return
+        }
+        scan(event)
+    }
+
+    private var trailPending = false
+    private var rescanCount = 0
+    private val trail = Runnable { trailPending = false; scan(null) }
+    private val jurnal = ArrayDeque<String>()
+
+    private fun rootOf(n: AccessibilityNodeInfo?): AccessibilityNodeInfo? {
+        var r = n
+        var i = 0
+        while (r?.parent != null && i < 40) { r = r.parent; i++ }
+        return r
+    }
+
+    private var eraPornit = true
+    private var ultimaCursa: Long? = null
+    private var pretFinalVazut: Double? = null
+
+    /** Comutatorul PORNIT/OPRIT din aplicație. Când e oprit: fără banner, fără istoric, fără GPS. */
+    private fun pornit(): Boolean {
+        val on = Params.prefs(this).getBoolean("pornit", true)
+        if (!on && eraPornit) { handler.removeCallbacks(inchidere); hideOverlay(); Traseu.opreste(); curId = null; curKey = null; autoKey = null }
+        eraPornit = on
+        return on
+    }
+
+    private fun scan(event: AccessibilityEvent?) {
+        if (!pornit()) return
+        val now = System.currentTimeMillis()
         lastRun = now
 
-        // Citim toate ferestrele Bolt, nu doar fereastra activă: oferta poate fi într-o fereastră separată.
+        // Citim DOAR ferestre Bolt (niciodată aplicația noastră sau Waze): ferestrele din listă + rădăcina ferestrei care a generat evenimentul.
         val groups = ArrayList<List<String>>()
-        try {
-            for (w in windows) {
-                val r = w.root ?: continue
-                if (r.packageName?.toString() == boltPackage) {
-                    val g = ArrayList<String>()
-                    collect(r, g)
-                    if (g.isNotEmpty()) groups.add(g)
-                }
-            }
-        } catch (e: Exception) { }
-        if (groups.isEmpty()) {
-            val root = rootInActiveWindow
-            if (root != null) {
-                val g = ArrayList<String>()
-                collect(root, g)
-                if (g.isNotEmpty()) groups.add(g)
-            }
+        fun adaug(r: AccessibilityNodeInfo?) {
+            if (r == null || r.packageName?.toString() != boltPackage) return
+            val g = ArrayList<String>()
+            collect(r, g)
+            if (g.isNotEmpty() && groups.none { it == g }) groups.add(g)
         }
+        try { for (w in windows) adaug(w.root) } catch (e: Exception) { }
+        try { adaug(rootOf(event?.source)) } catch (e: Exception) { }
+        try { adaug(rootInActiveWindow) } catch (e: Exception) { }   // adăugat doar dacă e Bolt (verificat în adaug)
         val hm = SimpleDateFormat("HH:mm:ss", Locale("ro")).format(Date(now))
         val dump = groups.joinToString("\n---- fereastră ----\n") { it.joinToString("\n") }
         val ed = Params.prefs(this).edit().putString("dump", dump).putString("tEvent", hm)
 
         Traseu.verificaExpirat(this)
-        if (Traseu.idActiv() != null && Analyzer.norm(dump).contains("anulat")) {
-            ed.putString("notif", hm + " (ecran) " + dump.lines().firstOrNull { Analyzer.norm(it).contains("anulat") })
+        if (Traseu.idActiv() != null && Analyzer.norm(dump).let { it.contains("anulat") || it.contains("cancelled") || it.contains("canceled") }) {
+            ed.putString("notif", hm + " (ecran) " + dump.lines().firstOrNull { Analyzer.norm(it).let { x -> x.contains("anulat") || x.contains("cancel") } })
             anuleaza()
         }
         if (Traseu.poateTermina()) {
             val nf = Analyzer.norm(dump)
             if (nf.contains("confirma tariful") || nf.contains("evalueaza pasagerul") || nf.contains("evalueaza clientul")) {
                 ed.putString("dumpFinal", hm + "\n" + dump)
-                Traseu.termina(this)
+                ultimaCursa = Traseu.termina(this); pretFinalVazut = null
+            }
+        }
+        val idCursa = ultimaCursa
+        if (idCursa != null && Analyzer.norm(dump).contains("confirma tariful")) {
+            val pf = Analyzer.pretFinal(groups.flatten())
+            if (pf != null && pf != pretFinalVazut) {
+                pretFinalVazut = pf
+                Istoric.seteazaPretFinal(this, idCursa, pf)
+                ed.putString("dumpFinal", hm + "\n" + dump)
             }
         }
 
         var oferta: Oferta? = null
         for (g in groups) { oferta = Analyzer.parseaza(g); if (oferta != null) break }
         if (oferta == null && groups.size > 1) oferta = Analyzer.parseaza(groups.flatten())
+        val partial = groups.any { Analyzer.pareOferta(it) }
+        val ndj = Analyzer.norm(dump)
+        val etAuto = ndj.contains("acceptare automata") || ndj.contains("auto accept")
+        if (etAuto) modAuto = true else if (ndj.contains("accept") && oferta != null) modAuto = false
+        if (oferta != null || partial || ndj.contains("accept")) {
+            jurnal.addLast(hm + "  ferestre=" + groups.size + " texte=" + groups.sumOf { it.size } + "  ofertă=" + (if (oferta != null) "DA" else "NU") +
+                "  buton=" + (if (etAuto) "auto" else if (ndj.contains("accept")) "manual" else "nu") + "  modAuto=" + modAuto)
+            while (jurnal.size > 40) jurnal.removeFirst()
+            ed.putString("jurnal", jurnal.joinToString("\n"))
+        }
+        if (oferta == null && partial && rescanCount < 8) {
+            // Pare o ofertă incompletă (fără buton încă): mai citim de câteva ori, la 250 ms.
+            rescanCount++
+            if (!trailPending) { trailPending = true; handler.postDelayed(trail, 250) }
+        } else if (oferta != null || !partial) rescanCount = 0
         if (oferta == null) {
             val n = Analyzer.norm(dump)
             val seamanaOferta = n.contains("lei") && (n.contains("accept") || n.contains("declin") || n.contains("refuz"))
             if (seamanaOferta) ed.putString("fail", hm + "\n" + dump)
             ed.apply()
-            endOffer(); lockKey = null; hideOverlay(); return
+            programeazaInchidere(); hideOverlay(); return
         }
         ed.putString("tOk", hm).apply()
+        handler.removeCallbacks(inchidere)
         val key = keyOf(oferta)
         if (key == lockKey) { hideOverlay(); return }
         val r = Analyzer.analizeaza(oferta, Params.load(this))
@@ -168,7 +234,8 @@ class BoltReaderService : AccessibilityService() {
             )
             if (auto) Traseu.start(this, id)
         }
-        show(oferta, r)
+        // Cursele acceptate automat se înregistrează, dar nu afișăm banner.
+        if (auto || autoKey == key) hideOverlay() else show(oferta, r)
     }
 
     private fun collect(n: AccessibilityNodeInfo?, out: MutableList<String>) {
@@ -243,7 +310,15 @@ class BoltReaderService : AccessibilityService() {
                 WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
                 PixelFormat.TRANSLUCENT
-            ).apply { gravity = Gravity.TOP; y = dp(36); horizontalMargin = 0.03f }
+            ).apply {
+                // Banner mutat din partea de sus ca să nu acopere butonul "Refuză". Poziția se alege din aplicație.
+                when (Params.prefs(this@BoltReaderService).getInt("poz", 1)) {
+                    0 -> { gravity = Gravity.TOP; y = dp(36) }
+                    2 -> { gravity = Gravity.CENTER; y = dp(110) }
+                    else -> { gravity = Gravity.CENTER; y = 0 }
+                }
+                horizontalMargin = 0.03f
+            }
             (getSystemService(WINDOW_SERVICE) as WindowManager).addView(b, lp)
             box = b
         }
@@ -260,10 +335,10 @@ class BoltReaderService : AccessibilityService() {
             centerText = "%.2f".format(r.ef); subText = "lei/km"; invalidate()
         }
         val pf = Favorite.potrivire(this, o.nume, o.text)
-        val titluTxt = if (pf == Favorite.NIMIC) r.titlu else r.titlu + (if (pf == Favorite.SIGUR) "  ♥" else "  ♡")
+        val titluTxt = if (pf == Favorite.NIMIC) r.titlu else r.titlu + "  ♥"
         tvTitle?.text = android.text.SpannableString(titluTxt).apply {
             if (pf != Favorite.NIMIC) setSpan(
-                android.text.style.ForegroundColorSpan(Color.parseColor("#FF5C9A")),
+                android.text.style.ForegroundColorSpan(Color.parseColor(if (pf == Favorite.SIGUR) "#FF3B3B" else "#F1C40F")),
                 r.titlu.length, titluTxt.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
             )
         }

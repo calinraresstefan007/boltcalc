@@ -170,6 +170,9 @@ object Analyzer {
         return ""
     }
 
+    /** Ecran care seamănă a ofertă (preț + două distanțe), chiar dacă butonul încă lipsește. */
+    fun pareOferta(texts: List<String>): Boolean = parseazaBrut(texts) != null
+
     private fun parseazaBrut(texts: List<String>): Oferta? {
         val all = texts.joinToString(" ")
         val priceStr = netPrice.find(all)?.groupValues?.get(1)
@@ -185,6 +188,21 @@ object Analyzer {
         val rating = (ratingStar.find(all) ?: ratingDot.find(all))?.groupValues?.get(1)?.let { n(it) }
         val (adrP, adrD) = adrese(texts)
         return Oferta(n(priceStr), dist[0], dist[1], mins.getOrNull(0), mins.getOrNull(1), rating, all, adrP, adrD, numeClient(texts))
+    }
+
+    private val numOnly = Regex("""^\s*(\d+[.,]\d{1,2})\s*$""")
+
+    /** Preț final de pe ecranul "Confirmă tariful": primul preț cu "lei" după titlu (apoi înainte), altfel un număr zecimal singur. */
+    fun pretFinal(texts: List<String>): Double? {
+        val i = texts.indexOfFirst { norm(it).contains("confirma tariful") }
+        if (i < 0) return null
+        fun cuLei(t: String): Double? = (netPrice.find(t) ?: priceBefore.find(t) ?: priceAfter.find(t))?.groupValues?.get(1)?.let { n(it) }
+        fun simplu(t: String): Double? = numOnly.find(t)?.groupValues?.get(1)?.let { n(it) }
+        for (k in i + 1 until texts.size) cuLei(texts[k])?.let { return it }
+        for (k in i - 1 downTo 0) cuLei(texts[k])?.let { return it }
+        for (k in i + 1 until texts.size) simplu(texts[k])?.let { return it }
+        for (k in i - 1 downTo 0) simplu(texts[k])?.let { return it }
+        return null
     }
 
     // Adresele sunt textele dintre cele două distanțe (preluare) și după a doua distanță, până la butoane (destinație).

@@ -21,7 +21,8 @@ data class Intrare(
     val nume: String = "",
     val kmReal: Double? = null,
     val efReal: Double? = null,
-    val profitReal: Double? = null
+    val profitReal: Double? = null,
+    val pretFinal: Double? = null
 )
 
 object Istoric {
@@ -48,7 +49,8 @@ object Istoric {
                         o.getInt("min"), if (r.isNaN()) null else r, o.getDouble("ef"), o.getDouble("profit"),
                         o.getString("verdict"), o.optString("motive", ""), o.optString("adrP", ""), o.optString("adrD", ""), o.getString("status"), o.optString("nume", ""),
                         o.optDouble("kr", Double.NaN).takeIf { !it.isNaN() }, o.optDouble("er", Double.NaN).takeIf { !it.isNaN() },
-                        o.optDouble("pr", Double.NaN).takeIf { !it.isNaN() }
+                        o.optDouble("pr", Double.NaN).takeIf { !it.isNaN() },
+                        o.optDouble("pf", Double.NaN).takeIf { !it.isNaN() }
                     )
                 )
             }
@@ -67,6 +69,7 @@ object Istoric {
             if (e.kmReal != null) o.put("kr", e.kmReal)
             if (e.efReal != null) o.put("er", e.efReal)
             if (e.profitReal != null) o.put("pr", e.profitReal)
+            if (e.pretFinal != null) o.put("pf", e.pretFinal)
             a.put(o)
         }
         prefs(c).edit().putString("items", a.toString()).apply()
@@ -90,6 +93,33 @@ object Istoric {
         val i = l.indexOfFirst { it.id == id }
         if (i < 0) return
         l[i] = l[i].copy(kmReal = km, efReal = ef, profitReal = profit)
+        save(c, l)
+    }
+
+    /** Marchează oferta ca acceptată automat doar dacă încă era doar "văzută". Întoarce true dacă s-a schimbat. */
+    fun marcheazaAuto(c: Context, id: Long): Boolean {
+        val l = load(c)
+        val e = l.firstOrNull { it.id == id } ?: return false
+        if (e.status != VAZUT) return false
+        e.status = AUTO
+        save(c, l)
+        return true
+    }
+
+    /** Prețul final (de pe "Confirmă tariful") înlocuiește prețul ofertei în profitul real. */
+    fun seteazaPretFinal(c: Context, id: Long, pret: Double) {
+        val l = load(c)
+        val i = l.indexOfFirst { it.id == id }
+        if (i < 0) return
+        var e = l[i].copy(pretFinal = pret)
+        val km = e.kmReal
+        if (km != null && km > 0 && e.status != ANULAT) {
+            val p = Params.load(c)
+            val net = if (p.pretEsteNet) pret else pret * (1.0 - p.comisionBolt)
+            val profit = net - km * (p.consumLa100 / 100.0) * p.pretMotorina
+            e = e.copy(profitReal = profit, efReal = profit / km)
+        }
+        l[i] = e
         save(c, l)
     }
 

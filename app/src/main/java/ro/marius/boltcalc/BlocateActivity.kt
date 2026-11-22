@@ -15,7 +15,7 @@ class BlocateActivity : Activity() {
 
     private val BG = Color.parseColor("#0B100E")
     private val CARD = Color.parseColor("#141C18")
-    private val MUTED = Color.parseColor("#8FA396")
+    private val MUTED = Color.parseColor("#E8C3C9")
     private val GREEN = Color.parseColor("#2ECC71")
     private val AMBER = Color.parseColor("#F1C40F")
     private val RED = Color.parseColor("#FF5252")
@@ -28,23 +28,25 @@ class BlocateActivity : Activity() {
         super.onCreate(savedInstanceState)
         val page = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setBackgroundColor(BG)
             setPadding(dp(16), dp(24), dp(16), dp(32))
         }
         page.addView(TextView(this).apply {
             text = "Adrese evitate"; textSize = 26f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.WHITE)
         })
         page.addView(TextView(this).apply {
-            text = "Fără număr blochezi toată strada, cu număr doar acel număr. Tipul contează: Strada Deleni și Aleea Deleni sunt străzi diferite. Alege „Oricare tip” ca să le blochezi pe amândouă."
+            text = "Fără număr blochezi toată strada, cu număr doar acel număr. Tipul contează: Strada Deleni și Aleea Deleni sunt străzi diferite. Alege „Oricare tip” ca să le blochezi pe amândouă. Poți evita și un client: scrie numele lui în câmpul „Nume” (tip „Oricare”)."
             textSize = 12f; setTextColor(MUTED); setPadding(0, dp(4), 0, dp(10))
         })
         page.addView(Button(this).apply {
-            text = "+ Adaugă adresă"; isAllCaps = false; setTextColor(Color.BLACK); background = round(GREEN, 12)
+            text = "+ Adaugă adresă sau nume"; isAllCaps = false; setTextColor(Color.WHITE); background = round(Color.parseColor("#C62828"), 12)
             setOnClickListener { BlocDialog.arata(this@BlocateActivity, null, "", { Blocate.salveaza(this@BlocateActivity, it); render() }, null) }
         }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48)))
         list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         page.addView(list)
-        setContentView(ScrollView(this).apply { setBackgroundColor(BG); addView(page) })
+        setContentView(ScrollView(this).apply {
+            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(Color.parseColor("#1F0D12"), Color.parseColor("#2B1219")))
+            addView(page)
+        })
         render()
     }
 
@@ -62,8 +64,6 @@ class BlocateActivity : Activity() {
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(dp(14), dp(12), dp(14), dp(12))
-                background = round(CARD, 14)
-                alpha = if (activ) 1f else 0.6f
                 setOnClickListener {
                     BlocDialog.arata(this@BlocateActivity, b, "",
                         { Blocate.salveaza(this@BlocateActivity, it); render() },
@@ -105,7 +105,23 @@ class BlocateActivity : Activity() {
                     setOnClickListener { b.start = System.currentTimeMillis(); Blocate.salveaza(this@BlocateActivity, b); render() }
                 })
             }
-            list.addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
+            // Culoare după stare: roșu = refuză, galben = avertizează, gri = expirată.
+            val (tint, band) = when {
+                !activ -> "#1E2B38" to MUTED
+                b.refuza -> "#431B22" to RED
+                else -> "#40350F" to AMBER
+            }
+            val r16 = dp(16).toFloat()
+            val wrap = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                background = round(Color.parseColor(tint), 16)
+                alpha = if (activ) 1f else 0.7f
+            }
+            wrap.addView(android.view.View(this).apply {
+                background = GradientDrawable().apply { setColor(band); cornerRadii = floatArrayOf(r16, r16, 0f, 0f, 0f, 0f, r16, r16) }
+            }, LinearLayout.LayoutParams(dp(8), ViewGroup.LayoutParams.MATCH_PARENT))
+            wrap.addView(row, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            list.addView(wrap, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) })
         }
     }
 }

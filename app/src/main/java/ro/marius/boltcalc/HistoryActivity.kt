@@ -62,7 +62,10 @@ class HistoryActivity : Activity() {
                     .show()
             }
         }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(48)).apply { topMargin = dp(16) })
-        setContentView(ScrollView(this).apply { setBackgroundColor(BG); addView(page) })
+        setContentView(ScrollView(this).apply {
+            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(Color.parseColor("#0B1020"), Color.parseColor("#141C34")))
+            addView(page)
+        })
         render()
     }
 
@@ -131,17 +134,7 @@ class HistoryActivity : Activity() {
             val row = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(dp(14), dp(12), dp(14), dp(12))
-                background = round(CARD, 14)
             }
-            val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL }
-            top.addView(TextView(this).apply { text = whenTxt; setTextColor(MUTED); textSize = 13f }, LinearLayout.LayoutParams(dp(78), ViewGroup.LayoutParams.WRAP_CONTENT))
-            top.addView(TextView(this).apply {
-                text = "%.2f lei".format(e.pret); setTextColor(Color.WHITE); textSize = 18f; typeface = Typeface.DEFAULT_BOLD
-            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
-            top.addView(TextView(this).apply {
-                text = "%.2f lei/km".format(e.ef); setTextColor(c); textSize = 14f; typeface = Typeface.DEFAULT_BOLD
-                setPadding(0, 0, dp(10), 0)
-            })
             val (pillTxt, pillCol) = when (e.status) {
                 Istoric.ACCEPTAT -> "ACCEPTATĂ" to GREEN
                 Istoric.AUTO -> "ACCEPTATĂ AUTO" to GREEN
@@ -150,18 +143,33 @@ class HistoryActivity : Activity() {
                 Istoric.ANULAT -> "ANULATĂ" to RED
                 else -> "ÎN CURS" to AMBER
             }
-            val pot = Favorite.potrivireIntrare(this, e)
-            top.addView(TextView(this).apply {
-                text = if (pot == Favorite.SIGUR) "♥" else "♡"; textSize = 22f
-                setTextColor(if (pot == Favorite.NIMIC) MUTED else Color.parseColor("#FF5C9A"))
-                setPadding(0, 0, dp(10), 0)
-                setOnClickListener { if (pot == Favorite.NIMIC) Favorite.dialog(this@HistoryActivity, e) { render() } else Favorite.dialogSterge(this@HistoryActivity, e) { render() } }
-            })
+            // Rândul 1: ora + starea
+            val top = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL }
+            top.addView(TextView(this).apply { text = whenTxt; setTextColor(MUTED); textSize = 13f },
+                LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             top.addView(TextView(this).apply {
                 text = pillTxt; textSize = 10f; typeface = Typeface.DEFAULT_BOLD; setTextColor(Color.BLACK)
                 setPadding(dp(8), dp(4), dp(8), dp(4)); background = round(pillCol, 8)
             })
             row.addView(top)
+            // Rândul 2: preț mare + lei/km + inimioară (prețul nu se mai rupe pe mai multe rânduri)
+            val pot = Favorite.potrivireIntrare(this, e)
+            val mid = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL }
+            mid.addView(TextView(this).apply {
+                text = "%.2f lei".format(e.pret); setTextColor(Color.WHITE); textSize = 22f; typeface = Typeface.DEFAULT_BOLD
+                setSingleLine(true)
+            }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
+            mid.addView(TextView(this).apply {
+                text = "%.2f lei/km".format(e.ef); setTextColor(c); textSize = 15f; typeface = Typeface.DEFAULT_BOLD
+                setSingleLine(true); setPadding(dp(12), 0, 0, 0)
+            }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            mid.addView(TextView(this).apply {
+                text = if (pot == Favorite.NIMIC) "♡" else "♥"; textSize = 26f
+                setTextColor(when (pot) { Favorite.SIGUR -> Color.parseColor("#FF3B3B"); Favorite.ADRESA -> Color.parseColor("#F1C40F"); else -> MUTED })
+                setPadding(dp(10), 0, 0, 0)
+                setOnClickListener { if (pot == Favorite.NIMIC) Favorite.dialog(this@HistoryActivity, e) { render() } else Favorite.dialogSterge(this@HistoryActivity, e) { render() } }
+            })
+            row.addView(mid)
             if (e.nume.isNotEmpty() || e.rating != null) row.addView(TextView(this).apply {
                 text = e.nume + (if (e.rating != null) (if (e.nume.isNotEmpty()) "  " else "") + "★ ${e.rating}" else "")
                 setTextColor(Color.WHITE); textSize = 14f; typeface = Typeface.DEFAULT_BOLD; setPadding(0, dp(6), 0, 0)
@@ -179,6 +187,14 @@ class HistoryActivity : Activity() {
                     setPadding(0, dp(6), 0, 0)
                 })
             }
+            if (e.pretFinal != null) {
+                val dp2 = e.pretFinal - e.pret
+                row.addView(TextView(this).apply {
+                    text = "PREȚ FINAL %.2f lei (anunțat %.2f, %s%.2f)".format(e.pretFinal, e.pret, if (dp2 >= 0) "+" else "", dp2)
+                    setTextColor(if (dp2 < -0.05) RED else GREEN); textSize = 12f; typeface = Typeface.DEFAULT_BOLD
+                    setPadding(0, dp(4), 0, 0)
+                })
+            }
             val min = if (e.minute > 0) "  •  ${e.minute} min" else ""
             row.addView(TextView(this).apply {
                 text = "preluare %.1f km + cursă %.1f km$min  •  profit %.1f lei".format(e.preluareKm, e.cursaKm, e.profit)
@@ -188,7 +204,7 @@ class HistoryActivity : Activity() {
                 if (a.isEmpty()) return
                 row.addView(TextView(this).apply {
                     text = "$label  $a"; setTextColor(Color.WHITE); textSize = 13f
-                    setPadding(dp(10), dp(8), dp(10), dp(8)); background = round(Color.parseColor("#1B2822"), 8)
+                    setPadding(dp(10), dp(8), dp(10), dp(8)); background = round(Color.parseColor("#47000000"), 8)
                     setOnClickListener { blocheaza(a) }
                 }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(6) })
             }
@@ -197,7 +213,18 @@ class HistoryActivity : Activity() {
             if (e.motive.isNotEmpty()) row.addView(TextView(this).apply {
                 text = e.motive; setTextColor(RED); textSize = 12f; setPadding(0, dp(2), 0, 0)
             })
-            list.addView(row, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(8) })
+            // Card colorat după verdict: fundal închis în nuanța verdictului + bandă groasă pe stânga.
+            val tint = when (e.verdict) { "EXCELENT" -> "#0E3B2A"; "BUN" -> "#40350F"; else -> "#431B22" }
+            val wrap = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                background = round(Color.parseColor(tint), 16)
+            }
+            val r16 = dp(16).toFloat()
+            wrap.addView(android.view.View(this).apply {
+                background = GradientDrawable().apply { setColor(c); cornerRadii = floatArrayOf(r16, r16, 0f, 0f, 0f, 0f, r16, r16) }
+            }, LinearLayout.LayoutParams(dp(8), ViewGroup.LayoutParams.MATCH_PARENT))
+            wrap.addView(row, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
+            list.addView(wrap, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(10) })
         }
     }
 }
