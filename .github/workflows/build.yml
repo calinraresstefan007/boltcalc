@@ -30,9 +30,12 @@ jobs:
         with:
           gradle-version: 8.7
       - name: Decode keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > release.keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | tr -d "\r\n " | base64 --decode > release.keystore
       - name: Build Release APK
-        run: gradle assembleRelease
+        run: |
+          export KEYSTORE_PASSWORD="$(printf '%s' "$KEYSTORE_PASSWORD" | tr -d '\r\n')"
+          export KEY_PASSWORD="$(printf '%s' "$KEY_PASSWORD" | tr -d '\r\n')"
+          gradle assembleRelease
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
