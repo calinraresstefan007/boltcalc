@@ -11,8 +11,8 @@ android {
         applicationId = "ro.marius.boltcalc"
         minSdk = 26
         targetSdk = 34
-        versionCode = 81
-        versionName = "81.0"
+        versionCode = 82
+        versionName = "82.0"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

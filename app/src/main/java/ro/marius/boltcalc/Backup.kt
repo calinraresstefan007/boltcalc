@@ -17,6 +17,8 @@ object Backup {
             .put("setari", setari)
             .put("net", p.getBoolean("net", true))
             .put("blocate", Blocate.toJson(Blocate.load(c)))
+            .put("favorite", Favorite.toJson(Favorite.load(c)))
+            .put("gol", Gol.toJson(Gol.load(c)))
             .put("istoric", JSONArray(Istoric.rawJson(c)))
             .toString(2)
     }
@@ -32,6 +34,8 @@ object Backup {
             ed.putBoolean("net", o.optBoolean("net", true))
             ed.apply()
             Blocate.save(c, blocate)
+            Gol.save(c, o.optJSONArray("gol")?.let { Gol.fromJson(it) } ?: emptyList())
+            Favorite.save(c, o.optJSONArray("favorite")?.let { Favorite.fromJson(it) } ?: emptyList())
             Istoric.inlocuieste(c, istoric)
             true
         } catch (e: Exception) {

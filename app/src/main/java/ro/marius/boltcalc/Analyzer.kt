@@ -58,7 +58,8 @@ data class Oferta(
     val rating: Double?,
     val text: String,
     val adrPreluare: String,
-    val adrDestinatie: String
+    val adrDestinatie: String,
+    val nume: String = ""
 )
 
 data class Rezultat(
@@ -138,7 +139,38 @@ object Analyzer {
 
     private fun n(s: String) = s.replace(',', '.').toDouble()
 
+    /**
+     * La cursă-în-cursă, cardul ofertei apare peste ecranul cursei în curs. Citim doar textele de la
+     * prețul cel mai apropiat de buton ("Acceptă", "Acceptă următoarea cursă", "Acceptare automată") până la buton.
+     */
+    private fun taieLaOferta(texts: List<String>): List<String> {
+        val b = texts.indexOfLast { norm(it).contains("accept") }
+        if (b <= 0) return texts
+        val p = (b downTo 0).firstOrNull {
+            netPrice.containsMatchIn(texts[it]) || priceBefore.containsMatchIn(texts[it]) || priceAfter.containsMatchIn(texts[it])
+        } ?: return texts
+        return texts.subList(p, b + 1)
+    }
+
+    // Oferta există doar când pe ecran e butonul de acceptare. În navigația spre client (preț + distanță de preluare,
+    // fără buton) nu afișăm nimic, altfel scorul ar fi fals.
     fun parseaza(texts: List<String>): Oferta? {
+        if (texts.none { norm(it).contains("accept") }) return null
+        return parseazaBrut(taieLaOferta(texts)) ?: parseazaBrut(texts)
+    }
+
+    // "Ioana Lucia • 5.0 ★" -> "IOANA LUCIA"
+    private fun numeClient(texts: List<String>): String {
+        for (t in texts) {
+            if (ratingStar.containsMatchIn(t) || ratingDot.containsMatchIn(t)) {
+                val nm = t.substringBefore('•').substringBefore('·').replace("★", "").trim()
+                if (nm.any { it.isLetter() } && !distNode.containsMatchIn(nm)) return nm.uppercase(java.util.Locale("ro"))
+            }
+        }
+        return ""
+    }
+
+    private fun parseazaBrut(texts: List<String>): Oferta? {
         val all = texts.joinToString(" ")
         val priceStr = netPrice.find(all)?.groupValues?.get(1)
             ?: priceBefore.find(all)?.groupValues?.get(1)
@@ -152,7 +184,7 @@ object Analyzer {
         val mins = minRe.findAll(all).map { it.groupValues[1].toInt() }.toList()
         val rating = (ratingStar.find(all) ?: ratingDot.find(all))?.groupValues?.get(1)?.let { n(it) }
         val (adrP, adrD) = adrese(texts)
-        return Oferta(n(priceStr), dist[0], dist[1], mins.getOrNull(0), mins.getOrNull(1), rating, all, adrP, adrD)
+        return Oferta(n(priceStr), dist[0], dist[1], mins.getOrNull(0), mins.getOrNull(1), rating, all, adrP, adrD, numeClient(texts))
     }
 
     // Adresele sunt textele dintre cele două distanțe (preluare) și după a doua distanță, până la butoane (destinație).

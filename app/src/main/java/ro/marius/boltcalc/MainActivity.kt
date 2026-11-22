@@ -2,6 +2,7 @@ package ro.marius.boltcalc
 
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
@@ -19,6 +20,7 @@ class MainActivity : Activity() {
     private val fields = LinkedHashMap<String, EditText>()
     private lateinit var net: CheckBox
     private lateinit var out: TextView
+    private lateinit var locStatus: TextView
 
     private val BG = Color.parseColor("#0B100E")
     private val CARD = Color.parseColor("#141C18")
@@ -90,6 +92,9 @@ class MainActivity : Activity() {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
         button("Istoric oferte") { startActivity(Intent(ctx, HistoryActivity::class.java)) }
+        button("Permite locația (km reali din GPS)") { cereLocatia() }
+        locStatus = TextView(ctx).apply { textSize = 12f; setTextColor(MUTED); setPadding(0, dp(6), 0, 0) }
+        card.addView(locStatus)
 
         section("Costuri")
         field("consum", "Consum (l/100 km)")
@@ -112,9 +117,22 @@ class MainActivity : Activity() {
         section("Salvare și test")
         button("Salvează", true) { save(); Toast.makeText(ctx, "Salvat", Toast.LENGTH_SHORT).show() }
         button("Testează cu o ofertă de probă") { save(); test() }
-        button("Calibrare: ultimul text și click din Bolt") { out.text = "Ultimul click: " + Params.prefs(ctx).getString("click", "(niciunul)") + "\n\n" + Params.prefs(ctx).getString("dump", "(nimic încă)") }
+        button("Diagnostic: ce a citit aplicația din Bolt") {
+            val pr = Params.prefs(ctx)
+            out.text = "Ultimul eveniment Bolt: " + pr.getString("tEvent", "(niciunul)") +
+                "\nUltima ofertă citită: " + pr.getString("tOk", "(niciuna)") +
+                "\nUltimul click: " + pr.getString("click", "(niciunul)") +
+                "\nUltima notificare/anulare: " + pr.getString("notif", "(niciuna)") +
+                "\nSfârșit cursă detectat: " + (if (pr.getString("dumpFinal", null) != null) "da" else "nu încă") +
+                "\n\nUltima ofertă NECITITĂ:\n" + pr.getString("fail", "(niciuna)") +
+                "\n\nUltimul ecran Bolt:\n" + pr.getString("dump", "(nimic încă)") +
+                "\n\nEcranul de final de cursă:\n" + pr.getString("dumpFinal", "(nimic încă)")
+        }
         out = TextView(ctx).apply { textSize = 13f; setTextColor(MUTED); setPadding(0, dp(10), 0, 0) }
         card.addView(out)
+
+        section("Resetare")
+        button("Resetează date (alegi ce)") { Resetare.dialog(ctx) { recreate() } }
 
         section("Copie de siguranță")
         button("Salvează copie (Drive sau alt loc)") {
@@ -134,6 +152,38 @@ class MainActivity : Activity() {
         }
 
         setContentView(ScrollView(ctx).apply { setBackgroundColor(BG); addView(page) })
+    }
+
+    override fun onResume() { super.onResume(); actualizeazaLoc() }
+
+    private fun actualizeazaLoc() {
+        locStatus.text = when {
+            !Traseu.areLocatie(this) -> "Locație: neacordată, kilometrii reali nu se măsoară"
+            !Traseu.areLocatieMereu(this) -> "Locație: doar cât aplicația e deschisă. Alege „Permite tot timpul”"
+            else -> "Locație: OK, km reali se măsoară de la acceptare la finalizare"
+        }
+    }
+
+    private fun cereLocatia() {
+        if (!Traseu.areLocatie(this)) {
+            requestPermissions(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION), 2001)
+        } else if (!Traseu.areLocatieMereu(this)) cereMereu()
+        else Toast.makeText(this, "Locația e deja permisă", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun cereMereu() {
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            Toast.makeText(this, "Alege Locație → „Permite tot timpul”", Toast.LENGTH_LONG).show()
+            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, android.net.Uri.parse("package:$packageName")))
+        } else if (android.os.Build.VERSION.SDK_INT >= 29) {
+            requestPermissions(arrayOf(android.Manifest.permission.ACCESS_BACKGROUND_LOCATION), 2002)
+        }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 2001 && grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) cereMereu()
+        actualizeazaLoc()
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
