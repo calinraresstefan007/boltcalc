@@ -13,6 +13,8 @@ object Diagnostic {
         val sb = StringBuilder()
         val f = SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale("ro"))
         sb.append("=== BOLT CALC DIAGNOSTIC ===\n")
+        val ver = try { c.packageManager.getPackageInfo(c.packageName, 0).versionName } catch (e: Exception) { "?" }
+        sb.append("Versiune aplicație: v").append(ver).append("\n")
         sb.append("Generat: ").append(f.format(Date())).append("\n")
         sb.append("Telefon: ").append(Build.MANUFACTURER).append(" ").append(Build.MODEL).append(", Android ").append(Build.VERSION.RELEASE).append(" (API ").append(Build.VERSION.SDK_INT).append(")\n")
         sb.append("Comutator PORNIT: ").append(p.getBoolean("pornit", true)).append("\n")
@@ -33,6 +35,7 @@ object Diagnostic {
             sb.append(hm.format(Date(it.id))).append("  ").append(it.status).append("  ").append("%.2f lei".format(it.pret))
                 .append("  prel %.1f + cursă %.1f km".format(it.preluareKm, it.cursaKm))
             if (it.kmReal != null) sb.append("  km reali %.1f".format(it.kmReal))
+            if (it.pretFinal != null) sb.append("  preț final %.2f".format(it.pretFinal))
             sb.append("\n")
         }
         sb.append("\nKm în gol (total): %.1f\n".format(Gol.total(c)))

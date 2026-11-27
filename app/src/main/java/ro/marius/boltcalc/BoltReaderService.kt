@@ -180,15 +180,6 @@ class BoltReaderService : AccessibilityService() {
                 ed.putString("dumpFinal", hm + "\n" + dump)
             }
         }
-        val idCursa = ultimaCursa
-        if (idCursa != null && Analyzer.norm(dump).contains("confirma tariful")) {
-            val pf = Analyzer.pretFinal(groups.flatten())
-            if (pf != null && pf != pretFinalVazut) {
-                pretFinalVazut = pf
-                Istoric.seteazaPretFinal(this, idCursa, pf)
-                ed.putString("dumpFinal", hm + "\n" + dump)
-            }
-        }
 
         // Ecranul "Curse programate" (listă): un rând cu calcul pentru fiecare card vizibil, fără istoric.
         val carduri = Analyzer.parseazaLista(groups.flatten())
@@ -200,7 +191,7 @@ class BoltReaderService : AccessibilityService() {
         val partial = groups.any { Analyzer.pareOferta(it) }
         val ndj = Analyzer.norm(dump)
         val etAuto = ndj.contains("acceptare automata") || ndj.contains("auto accept")
-        if (etAuto) modAuto = true else if (ndj.contains("accept") && oferta != null) modAuto = false
+        if (etAuto) modAuto = true else if (ndj.contains("accept") && oferta != null && oferta?.programata != true) modAuto = false
         if (oferta != null || partial || ndj.contains("accept")) {
             jurnal.addLast(hm + "  ferestre=" + groups.size + " texte=" + groups.sumOf { it.size } + "  ofertă=" + (if (oferta != null) "DA" else "NU") +
                 "  buton=" + (if (etAuto) "auto" else if (ndj.contains("accept")) "manual" else "nu") + "  modAuto=" + modAuto)
@@ -351,11 +342,12 @@ class BoltReaderService : AccessibilityService() {
             centerText = "%.2f".format(r.ef); subText = "lei/km"; invalidate()
         }
         val pf = Favorite.potrivire(this, o.nume, o.text)
-        val titluTxt = if (pf == Favorite.NIMIC) r.titlu else r.titlu + "  ♥"
+        val baza = (if (o.programata) "PROGRAMATĂ • " else "") + r.titlu
+        val titluTxt = if (pf == Favorite.NIMIC) baza else baza + "  ♥"
         tvTitle?.text = android.text.SpannableString(titluTxt).apply {
             if (pf != Favorite.NIMIC) setSpan(
                 android.text.style.ForegroundColorSpan(Color.parseColor(if (pf == Favorite.SIGUR) "#FF3B3B" else "#F1C40F")),
-                r.titlu.length, titluTxt.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                baza.length, titluTxt.length, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
             )
         }
         tvTitle?.setTextColor(color)

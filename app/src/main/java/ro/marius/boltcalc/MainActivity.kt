@@ -71,7 +71,8 @@ class MainActivity : Activity() {
         page.addView(sw, LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT))
 
         fun paleta(t: String): Pair<Int, Int> = when {
-            t.startsWith("Pornire") -> "#0E3B34" to "#4BE3B5"
+            t.startsWith("Activări") -> "#0F3A4A" to "#5CD6F2"
+            t.startsWith("Acces") -> "#0E3B34" to "#4BE3B5"
             t.startsWith("Costuri") -> "#14335F" to "#6CB4FF"
             t.startsWith("Praguri") -> "#33235C" to "#B79BFF"
             t.startsWith("Filtre") -> "#4D2C10" to "#FFB35C"
@@ -144,9 +145,6 @@ class MainActivity : Activity() {
         section("Acces rapid")
         button("Istoric oferte") { startActivity(Intent(ctx, HistoryActivity::class.java)) }
         button("Preferate ♥ (clienți și adrese)") { startActivity(Intent(ctx, FavoriteActivity::class.java)) }
-        button("Permite locația (km reali din GPS)") { cereLocatia() }
-        locStatus = TextView(ctx).apply { textSize = 12f; setTextColor(MUTED); setPadding(0, dp(6), 0, 0) }
-        card.addView(locStatus)
         label("Poziția bannerului pe ecran")
         val spPoz = Spinner(ctx).apply {
             adapter = ArrayAdapter(ctx, android.R.layout.simple_spinner_dropdown_item, listOf("Sus", "Mijloc", "Puțin sub mijloc"))

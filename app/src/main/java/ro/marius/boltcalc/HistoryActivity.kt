@@ -159,11 +159,11 @@ class HistoryActivity : Activity() {
             val pot = Favorite.potrivireIntrare(this, e)
             val mid = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.CENTER_VERTICAL }
             mid.addView(TextView(this).apply {
-                text = "%.2f lei".format(e.pret); setTextColor(Color.WHITE); textSize = 22f; typeface = Typeface.DEFAULT_BOLD
+                text = "%.2f lei".format(e.pretFinal ?: e.pret); setTextColor(Color.WHITE); textSize = 22f; typeface = Typeface.DEFAULT_BOLD
                 setSingleLine(true)
             }, LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT))
             mid.addView(TextView(this).apply {
-                text = "%.2f lei/km".format(e.ef); setTextColor(c); textSize = 15f; typeface = Typeface.DEFAULT_BOLD
+                text = "%.2f lei/km".format(e.efReal ?: e.ef); setTextColor(c); textSize = 15f; typeface = Typeface.DEFAULT_BOLD
                 setSingleLine(true); setPadding(dp(12), 0, 0, 0)
             }, LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f))
             mid.addView(TextView(this).apply {
@@ -195,6 +195,12 @@ class HistoryActivity : Activity() {
                 row.addView(TextView(this).apply {
                     text = "PREȚ FINAL %.2f lei (anunțat %.2f, %s%.2f)".format(e.pretFinal, e.pret, if (dp2 >= 0) "+" else "", dp2)
                     setTextColor(if (dp2 < -0.05) RED else GREEN); textSize = 12f; typeface = Typeface.DEFAULT_BOLD
+                    setPadding(0, dp(4), 0, 0)
+                })
+                // Fără km reali din GPS: profitul cu preț final e calculat pe km anunțați.
+                if (e.kmReal == null && e.profitReal != null) row.addView(TextView(this).apply {
+                    text = "profit cu preț final %.1f lei  •  %.2f lei/km (km anunțați)".format(e.profitReal, e.efReal ?: 0.0)
+                    setTextColor(if (e.profitReal >= 0) GREEN else RED); textSize = 12f; typeface = Typeface.DEFAULT_BOLD
                     setPadding(0, dp(4), 0, 0)
                 })
             }
