@@ -106,23 +106,18 @@ object Istoric {
         return true
     }
 
-    /**
-     * Prețul final (de pe "Confirmă tariful") înlocuiește prețul ofertei în profitul real.
-     * Se folosesc km reali din GPS; dacă nu există (locație oprită), se folosesc km anunțați (preluare + cursă).
-     */
+    /** Prețul final (de pe "Confirmă tariful") înlocuiește prețul ofertei în profitul real. */
     fun seteazaPretFinal(c: Context, id: Long, pret: Double) {
         val l = load(c)
         val i = l.indexOfFirst { it.id == id }
         if (i < 0) return
         var e = l[i].copy(pretFinal = pret)
-        if (e.status != ANULAT) {
-            val km: Double? = e.kmReal?.takeIf { it > 0 } ?: (e.preluareKm + e.cursaKm).takeIf { it > 0 }
-            if (km != null) {
-                val p = Params.load(c)
-                val net = if (p.pretEsteNet) pret else pret * (1.0 - p.comisionBolt)
-                val profit = net - km * (p.consumLa100 / 100.0) * p.pretMotorina
-                e = e.copy(profitReal = profit, efReal = profit / km)
-            }
+        val km = e.kmReal
+        if (km != null && km > 0 && e.status != ANULAT) {
+            val p = Params.load(c)
+            val net = if (p.pretEsteNet) pret else pret * (1.0 - p.comisionBolt)
+            val profit = net - km * (p.consumLa100 / 100.0) * p.pretMotorina
+            e = e.copy(profitReal = profit, efReal = profit / km)
         }
         l[i] = e
         save(c, l)

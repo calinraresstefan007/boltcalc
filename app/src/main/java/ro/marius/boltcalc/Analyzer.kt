@@ -244,6 +244,21 @@ object Analyzer {
         return out
     }
 
+    private val numOnly = Regex("""^\s*(\d+[.,]\d{1,2})\s*$""")
+
+    /** Preț final de pe ecranul "Confirmă tariful": primul preț cu "lei" după titlu (apoi înainte), altfel un număr zecimal singur. */
+    fun pretFinal(texts: List<String>): Double? {
+        val i = texts.indexOfFirst { norm(it).contains("confirma tariful") }
+        if (i < 0) return null
+        fun cuLei(t: String): Double? = (netPrice.find(t) ?: priceBefore.find(t) ?: priceAfter.find(t))?.groupValues?.get(1)?.let { n(it) }
+        fun simplu(t: String): Double? = numOnly.find(t)?.groupValues?.get(1)?.let { n(it) }
+        for (k in i + 1 until texts.size) cuLei(texts[k])?.let { return it }
+        for (k in i - 1 downTo 0) cuLei(texts[k])?.let { return it }
+        for (k in i + 1 until texts.size) simplu(texts[k])?.let { return it }
+        for (k in i - 1 downTo 0) simplu(texts[k])?.let { return it }
+        return null
+    }
+
     // Adresele sunt textele dintre cele două distanțe (preluare) și după a doua distanță, până la butoane (destinație).
     private val distNode = Regex("""\d+(?:[.,]\d+)?\s*(?:km|m)\b""", RegexOption.IGNORE_CASE)
     private val minOnly = Regex("""^\d+ min$""")
