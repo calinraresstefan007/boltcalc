@@ -92,6 +92,30 @@ object Favorite {
             .setNegativeButton("Anulează", null).show()
     }
 
+    /** Adăugare / editare manuală: nume (opțional), adresă, tip. Fără nume = potrivire doar pe adresă. */
+    fun manual(ctx: Context, f: Favorit?, dupa: () -> Unit) {
+        val dp = ctx.resources.displayMetrics.density
+        val col = LinearLayout(ctx).apply { orientation = LinearLayout.VERTICAL; setPadding((20 * dp).toInt(), (10 * dp).toInt(), (20 * dp).toInt(), 0) }
+        val nume = EditText(ctx).apply { hint = "Nume client (opțional)"; setText(f?.nume ?: ""); inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_FLAG_CAP_CHARACTERS }
+        val adr = EditText(ctx).apply { hint = "Adresa (ex: Strada Deleni 7)"; setText(f?.adresa ?: ""); inputType = InputType.TYPE_CLASS_TEXT }
+        val tip = Spinner(ctx).apply {
+            adapter = ArrayAdapter(ctx, android.R.layout.simple_spinner_dropdown_item, TIPURI)
+            setSelection(TIPURI.indexOf(f?.tip ?: "").coerceAtLeast(0))
+        }
+        col.addView(nume); col.addView(adr); col.addView(tip)
+        val b = AlertDialog.Builder(ctx).setTitle(if (f == null) "♥ Adaugă preferat" else "♥ Editează preferat").setView(col)
+            .setPositiveButton("Salvează") { _, _ ->
+                val a = adr.text.toString().trim()
+                if (a.length < 3) { Toast.makeText(ctx, "Adresa e prea scurtă", Toast.LENGTH_SHORT).show(); return@setPositiveButton }
+                val nou = Favorit(f?.id ?: System.currentTimeMillis(), nume.text.toString().trim().uppercase(java.util.Locale("ro")), a, TIPURI[tip.selectedItemPosition])
+                save(ctx, load(ctx).filter { it.id != nou.id } + nou)
+                dupa()
+            }
+            .setNegativeButton("Anulează", null)
+        if (f != null) b.setNeutralButton("Șterge") { _, _ -> sterge(ctx, f.id); dupa() }
+        b.show()
+    }
+
     /** Dacă oferta e deja potrivită: oferă ștergerea favoritelor care se potrivesc. */
     fun dialogSterge(ctx: Context, e: Intrare, dupa: () -> Unit) {
         val text = e.adrP + " " + e.adrD

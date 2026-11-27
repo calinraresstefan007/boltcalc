@@ -59,7 +59,8 @@ data class Oferta(
     val text: String,
     val adrPreluare: String,
     val adrDestinatie: String,
-    val nume: String = ""
+    val nume: String = "",
+    val programata: Boolean = false
 )
 
 data class Rezultat(
@@ -170,6 +171,9 @@ object Analyzer {
         return ""
     }
 
+    /** Ecran care seamănă a ofertă (preț + două distanțe), chiar dacă butonul încă lipsește. */
+    fun pareOferta(texts: List<String>): Boolean = parseazaBrut(texts) != null
+
     private fun parseazaBrut(texts: List<String>): Oferta? {
         val all = texts.joinToString(" ")
         val priceStr = netPrice.find(all)?.groupValues?.get(1)
@@ -180,11 +184,64 @@ object Analyzer {
             val x = n(it.groupValues[1])
             if (it.groupValues[2].lowercase() == "m") x / 1000.0 else x
         }.toList()
-        if (dist.size < 2) return null
+        // Cursă programată: scrie "programat" sus, are un singur kilometraj (fără preluare), adrese "în apropiere de ..."
+        val na = norm(all)
+        val prog = na.contains("programat") || na.contains("scheduled") || na.contains("in apropiere de")
+        if (dist.isEmpty() || (dist.size < 2 && !prog)) return null
         val mins = minRe.findAll(all).map { it.groupValues[1].toInt() }.toList()
         val rating = (ratingStar.find(all) ?: ratingDot.find(all))?.groupValues?.get(1)?.let { n(it) }
         val (adrP, adrD) = adrese(texts)
-        return Oferta(n(priceStr), dist[0], dist[1], mins.getOrNull(0), mins.getOrNull(1), rating, all, adrP, adrD, numeClient(texts))
+        // Cursă programată: un singur kilometraj (uneori citit de două ori), fără preluare și fără minute.
+        if (prog) return Oferta(n(priceStr), 0.0, dist[0], null, null, rating, all, adrP, adrD, numeClient(texts), true)
+        return Oferta(n(priceStr), dist[0], dist[1], mins.getOrNull(0), mins.getOrNull(1), rating, all, adrP, adrD, numeClient(texts), prog)
+    }
+
+    private val numOnly = Regex("""^\s*(\d+[.,]\d{1,2})\s*$""")
+
+    /** Preț final de pe ecranul "Confirmă tariful": primul preț cu "lei" după titlu (apoi înainte), altfel un număr zecimal singur. */
+    fun pretFinal(texts: List<String>): Double? {
+        val i = texts.indexOfFirst { norm(it).contains("confirma tariful") }
+        if (i < 0) return null
+        fun cuLei(t: String): Double? = (netPrice.find(t) ?: priceBefore.find(t) ?: priceAfter.find(t))?.groupValues?.get(1)?.let { n(it) }
+        fun simplu(t: String): Double? = numOnly.find(t)?.groupValues?.get(1)?.let { n(it) }
+        for (k in i + 1 until texts.size) cuLei(texts[k])?.let { return it }
+        for (k in i - 1 downTo 0) cuLei(texts[k])?.let { return it }
+        for (k in i + 1 until texts.size) simplu(texts[k])?.let { return it }
+        for (k in i - 1 downTo 0) simplu(texts[k])?.let { return it }
+        return null
+    }
+
+    data class CardProgramat(val pret: Double, val km: Double, val cand: String)
+
+    private val cardPret = Regex("""^\s*(\d+(?:[.,]\d{1,2})?)\s*lei""", RegexOption.IGNORE_CASE)
+    private val kmLista = Regex("""(\d+(?:[.,]\d+)?)\s*km\b""", RegexOption.IGNORE_CASE)
+    private val oraRe = Regex("""\d{1,2}:\d{2}""")
+
+    /**
+     * Ecranul "Curse programate" e o listă de carduri: "14,92 lei • 24 nov., 07:20–07:25", apoi "3.8km", apoi adrese.
+     * Fiecare card se calculează separat (un singur kilometraj, fără preluare).
+     */
+    fun parseazaLista(texts: List<String>): List<CardProgramat> {
+        if (texts.none { norm(it).contains("curse programate") }) return emptyList()
+        val out = ArrayList<CardProgramat>()
+        var i = 0
+        while (i < texts.size) {
+            val m = cardPret.find(texts[i])
+            if (m == null) { i++; continue }
+            val pret = n(m.groupValues[1])
+            var cand = texts[i].substringAfter('•', "").trim()
+            var km: Double? = null
+            var j = i + 1
+            while (j < texts.size && cardPret.find(texts[j]) == null) {
+                if (km == null) kmLista.find(texts[j])?.let { km = n(it.groupValues[1]) }
+                if (cand.isEmpty() && oraRe.containsMatchIn(texts[j])) cand = texts[j].trim()
+                j++
+            }
+            val k = km
+            if (k != null && k > 0.0) out.add(CardProgramat(pret, k, cand))
+            i = j
+        }
+        return out
     }
 
     // Adresele sunt textele dintre cele două distanțe (preluare) și după a doua distanță, până la butoane (destinație).

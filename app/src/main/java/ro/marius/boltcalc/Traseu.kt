@@ -84,12 +84,17 @@ object Traseu {
 
     fun idActiv() = activ
 
+    /** Aplicația a fost oprită din comutator: oprim GPS-ul și uităm măsurătorile în curs. */
+    fun opreste() {
+        opresteGps(); activ = null; coada.clear(); golActiv = false; ultima = null
+    }
+
     /** Ignorăm ecranul de final al cursei precedente cât timp tocmai a pornit următoarea (primele 20 s). */
     fun poateTermina() = activ != null && System.currentTimeMillis() - startMs > 20_000L
 
     /** Oprește măsurătoarea curentă. Rezultatul se scrie în istoric. */
-    fun termina(c: Context, platita: Boolean = true) {
-        val id = activ ?: return
+    fun termina(c: Context, platita: Boolean = true): Long? {
+        val id = activ ?: return null
         val km = metri / 1000.0
         val avut = areLocatie(c) && ultima != null
         opresteGps()
@@ -98,7 +103,8 @@ object Traseu {
             val p = Params.load(c)
             val e = Istoric.load(c).firstOrNull { it.id == id }
             if (e != null) {
-                val net = if (p.pretEsteNet) e.pret else e.pret * (1.0 - p.comisionBolt)
+                val pretEf = e.pretFinal ?: e.pret   // prețul final de pe "Confirmă tariful", dacă a apărut deja
+                val net = if (p.pretEsteNet) pretEf else pretEf * (1.0 - p.comisionBolt)
                 val cost = km * (p.consumLa100 / 100.0) * p.pretMotorina
                 val profit = if (platita) net - cost else -cost   // cursă anulată: nu încasezi nimic
                 Istoric.seteazaKmReal(c, id, km, profit / km, profit)
@@ -106,6 +112,7 @@ object Traseu {
         }
         if (coada.isNotEmpty()) porneste(c, coada.removeAt(0))
         else { golActiv = true; pornesteGps(c) }   // de aici până la următoarea acceptare = km în gol
+        return id
     }
 
     /** Siguranță: o cursă nu durează peste 3 ore, iar kilometrii în gol se opresc după 2 ore fără ofertă acceptată. */
