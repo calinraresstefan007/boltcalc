@@ -11,14 +11,18 @@ android {
         applicationId = "ro.marius.boltcalc"
         minSdk = 26
         targetSdk = 34
-        versionCode = 6
-        versionName = "6"
+        versionCode = 87
+        versionName = "87.0"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
+    kotlinOptions {
+        compilerOptions {
+            jvmTarget = "17"
+        }
+    }
 
     java {
         toolchain {

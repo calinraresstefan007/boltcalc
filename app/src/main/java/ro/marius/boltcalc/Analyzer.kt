@@ -21,8 +21,29 @@ data class Params(
             "consum" to "6.5", "motorina" to "10.90", "comision" to "0.25",
             "maxPre" to "3.5", "minEx" to "2.5", "minBun" to "1.5"
         )
+        private const val PREFS_OLD = "bolt"
+        private const val PREFS_NEW = "boltcalc2"
+        private var migrated = false
 
-        fun prefs(c: Context) = c.getSharedPreferences("boltcalc2", Context.MODE_PRIVATE)
+        private fun migrateIfNeeded(c: Context) {
+            if (migrated) return
+            val old = c.getSharedPreferences(PREFS_OLD, Context.MODE_PRIVATE)
+            val nw = c.getSharedPreferences(PREFS_NEW, Context.MODE_PRIVATE)
+            if (nw.all.isEmpty() && old.all.isNotEmpty()) {
+                nw.edit().apply {
+                    old.all.forEach { (k, v) -> when (v) {
+                        is String -> putString(k, v)
+                        is Int -> putInt(k, v)
+                        is Long -> putLong(k, v)
+                        is Float -> putFloat(k, v)
+                        is Boolean -> putBoolean(k, v)
+                    } }
+                }.apply()
+            }
+            migrated = true
+        }
+
+        fun prefs(c: Context) = c.getSharedPreferences(PREFS_NEW, Context.MODE_PRIVATE).also { migrateIfNeeded(c) }
 
         fun raw(c: Context, key: String): String = prefs(c).getString(key, null) ?: DEFAULTS[key] ?: ""
 
