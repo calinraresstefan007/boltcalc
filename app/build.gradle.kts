@@ -1,4 +1,4 @@
-﻿plugins {
+plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
@@ -11,8 +11,8 @@ android {
         applicationId = "ro.marius.boltcalc"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 6
+        versionName = "6"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -52,3 +52,5 @@ dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test-junit:1.9.24")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.10.0")
 }
+
+

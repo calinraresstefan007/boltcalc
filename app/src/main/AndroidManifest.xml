@@ -1,17 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Permissions -->
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-    
-    <!-- Accessibility service permission is granted via the service declaration -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
     <application
-        android:allowBackup="false"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:label="Bolt Calc"
-        android:theme="@android:style/Theme.Material.Light"
-        android:dataExtractionRules="@xml/data_extraction_rules"
-        android:fullBackupContent="@xml/backup_rules">
+        android:theme="@android:style/Theme.Material.NoActionBar">
 
         <activity android:name=".MainActivity" android:exported="true">
             <intent-filter>
@@ -20,10 +19,16 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".HistoryActivity" android:exported="false" />
+
+        <activity android:name=".BlocateActivity" android:exported="false" />
+
+        <activity android:name=".FavoriteActivity" android:exported="false" />
+
         <service
             android:name=".BoltReaderService"
             android:exported="true"
-            android:label="Bolt Calc Overlay"
+            android:label="Bolt Calc"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />
@@ -32,6 +37,5 @@
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_config" />
         </service>
-
     </application>
 </manifest>
