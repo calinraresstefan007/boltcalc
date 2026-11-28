@@ -30,14 +30,23 @@ data class Params(
             val old = c.getSharedPreferences(PREFS_OLD, Context.MODE_PRIVATE)
             val nw = c.getSharedPreferences(PREFS_NEW, Context.MODE_PRIVATE)
             if (nw.all.isEmpty() && old.all.isNotEmpty()) {
+                // Map old key names to new ones
+                val keyMap = mapOf(
+                    "maxPreluare" to "maxPre",
+                    "minExcelent" to "minEx",
+                    "minBun" to "minBun"
+                )
                 nw.edit().apply {
-                    old.all.forEach { (k, v) -> when (v) {
-                        is String -> putString(k, v)
-                        is Int -> putInt(k, v)
-                        is Long -> putLong(k, v)
-                        is Float -> putFloat(k, v)
-                        is Boolean -> putBoolean(k, v)
-                    } }
+                    old.all.forEach { (k, v) ->
+                        val newKey = keyMap[k] ?: k
+                        when (v) {
+                            is String -> putString(newKey, v)
+                            is Int -> putInt(newKey, v)
+                            is Long -> putLong(newKey, v)
+                            is Float -> putFloat(newKey, v)
+                            is Boolean -> putBoolean(newKey, v)
+                        }
+                    }
                 }.apply()
             }
             migrated = true
