@@ -116,7 +116,7 @@ class AnalyzerTest {
         val r = Analyzer.analizeaza(oferta, params)
 
         assertEquals(Verdict.REFUZA, r.verdict)
-        assertTrue(r.text.contains("preluare prea lungă"))
+        assertTrue(r.motive.contains("preluare prea lungă"))
     }
 
     @Test
@@ -131,7 +131,7 @@ class AnalyzerTest {
         val r = Analyzer.analizeaza(oferta, params)
 
         assertEquals(Verdict.REFUZA, r.verdict)
-        assertTrue(r.text.contains("pierzi pe motorină"))
+        assertTrue(r.motive.contains("pierzi pe motorină"))
     }
 
     @Test
